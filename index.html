@@ -1,32 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2nd Shift Production Scanner</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        
+        #header { width: 100%; background: #333; color: white; padding: 15px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        
+        .status-bar { background: #444; color: #00ff00; width: 100%; padding: 5px 0; font-size: 0.8em; font-family: monospace; text-align: center; }
+
+        #dashboard { width: 90%; max-width: 500px; margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+
+        .stat-card { background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .stat-card strong { display: block; color: #666; font-size: 0.8em; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-val { font-size: 1.8em; font-weight: bold; }
+
+        /* Colors for the 4 data points */
+        #total-leaks { color: #d32f2f; }
+        #total-flows { color: #1976d2; }
+        #total-passed { color: #388e3c; }
+        #total-hours { color: #f57c00; }
+
+        #controls { width: 90%; max-width: 500px; margin-top: 25px; }
+        .btn { display: block; width: 100%; padding: 18px; border: none; border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: opacity 0.2s; }
+        .btn-scan { background: #2196f3; color: white; }
+        .btn-save { background: #388e3c; color: white; }
+        .btn-reset { background: #f44336; color: white; font-size: 0.8em; }
+
+        #history { width: 90%; max-width: 500px; margin-top: 15px; color: #777; font-size: 0.85em; text-align: left; }
+    </style>
+</head>
 <body>
-    <div id="stats-banner" style="background: #333; color: white; padding: 10px; font-weight: bold;">
-        Sheets Scanned: <span id="sheet-count">0</span> / 3
+
+    <div id="header">
+        <h2 style="margin:0">ShiftData Matrix</h2>
+    </div>
+    <div class="status-bar">
+        DOCUMENTS SCANNED: <span id="sheet-count">0</span> / 3
     </div>
 
-    <div id="scan-zone" style="padding: 20px; border-bottom: 2px solid #ddd; background: #fff;">
-        <input type="file" id="capture" accept="image/*" capture="environment" style="display:none">
-        
-        <button class="btn" style="background: #2196F3; font-size: 1.2em; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" 
-                onclick="document.getElementById('capture').click()">
-            📷 SCAN DOCUMENT
-        </button>
-        
-        <p style="color: #666; font-size: 0.8em; margin-top: 10px;">
-            Tip: Align the sheet within the green guide lines
-        </p>
-    </div>
-
-    <div id="running-totals" style="padding: 20px; background: #fafafa;">
-        <h3 style="margin-top: 0;">Combined Totals</h3>
-        <div style="display: flex; justify-content: space-around; background: white; padding: 15px; border-radius: 8px; border: 1px solid #eee;">
-            <div><strong>Leaks</strong><br><span id="total-leaks" style="font-size: 1.5em; color: #d32f2f;">0</span></div>
-            <div><strong>Flow</strong><br><span id="total-flows" style="font-size: 1.5em; color: #1976D2;">0</span></div>
-            <div><strong>Hours</strong><br><span id="total-hours" style="font-size: 1.5em; color: #388E3C;">0</span></div>
+    <div id="dashboard">
+        <div class="stat-card">
+            <strong>Leaks</strong>
+            <span id="total-leaks" class="stat-val">0</span>
+        </div>
+        <div class="stat-card">
+            <strong>Flow Fails</strong>
+            <span id="total-flows" class="stat-val">0</span>
+        </div>
+        <div class="stat-card">
+            <strong>Total Passed</strong>
+            <span id="total-passed" class="stat-val">0</span>
+        </div>
+        <div class="stat-card">
+            <strong>Total Hours</strong>
+            <span id="total-hours" class="stat-val">0</span>
         </div>
     </div>
 
-    <div style="padding: 20px;">
-        <button class="btn" style="background: #4CAF50; width: 100%;" onclick="finalizeReport()">✅ FINALIZE & SAVE</button>
-        <button class="btn" style="background: #f44336; width: 100%; margin-top: 10px;" onclick="location.reload()">🔄 RESET SESSION</button>
+    <div id="controls">
+        <input type="file" id="capture" accept="image/*" capture="environment" style="display:none">
+        
+        <button class="btn btn-scan" onclick="document.getElementById('capture').click()">
+            📷 SCAN DOCUMENT
+        </button>
+
+        <button class="btn btn-save" onclick="finalizeSession()">
+            ✅ FINALIZE & SAVE REPORT
+        </button>
+
+        <button class="btn btn-reset" onclick="resetSession()">
+            🔄 RESET ALL DATA
+        </button>
     </div>
+
+    <div id="history">
+        <strong>Session Log:</strong>
+        <div id="log-entries">No documents scanned yet.</div>
+    </div>
+
+    <script src="data_model.js"></script>
+    <script src="preprocessor.js"></script>
+    <script src="talley_counter.js"></script>
+    <script src="data_extractor.js"></script>
+    <script src="shift_data_processor.js"></script>
+    <script src="integrity_check.js"></script>
+
+    <script>
+        // Register Service Worker for Offline Work
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+
+        const captureInput = document.getElementById('capture');
+
+        // Main Pipeline Trigger
+        captureInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Integrity Check: Max 3 Sheets
+            if (ShiftReport.sheetsScanned >= 3) {
+                alert("Maximum of 3 sheets allowed per session.");
+                return;
+            }
+
+            try {
+                const imageUrl = URL.createObjectURL(file);
+                
+                // 1. Run Preprocessor
+                const processedImg = await Preprocessor.process(imageUrl);
+                
+                // 2. Extract Data (Handled by your data_extractor.js)
+                const rawResults = await DataExtractor.analyze(processedImg);
+                
+                // 3. Process Specific Shift Logic (Tallies & Hours)
+                const sheetData = ShiftDataProcessor.processSheet(rawResults);
+                
+                // 4. Integrity Check before adding
+                const isDataValid = IntegrityCheck.validate(sheetData);
+
+                if (isDataValid) {
+                    ShiftReport.addSheetData(sheetData);
+                    updateUI(sheetData);
+                } else {
+                    alert("Data mismatch on sheet! Please check the tallies.");
+                }
+
+            } catch (error) {
+                console.error("Scan failed:", error);
+                alert("Error processing document. Try a clearer photo.");
+            }
+        });
+
+        function updateUI(newSheet) {
+            document.getElementById('sheet-count').innerText = ShiftReport.sheetsScanned;
+            document.getElementById('total-leaks').innerText = ShiftReport.totals.leaks;
+            document.getElementById('total-flows').innerText = ShiftReport.totals.flowFails;
+            document.getElementById('total-passed').innerText = ShiftReport.totals.passed;
+            document.getElementById('total-hours').innerText = ShiftReport.totals.hoursWorked;
+
+            const log = document.getElementById('log-entries');
+            if(ShiftReport.sheetsScanned === 1) log.innerHTML = "";
+            log.innerHTML += `<div>Sheet ${ShiftReport.sheetsScanned}: +${newSheet.hoursThisSheet} hrs detected.</div>`;
+        }
+
+        function finalizeSession() {
+            if(ShiftReport.sheetsScanned === 0) return alert("No data to save.");
+            alert("Report finalized for Second Shift!");
+            // Add logic here to download as CSV or Send to Email
+        }
+
+        function resetSession() {
+            if(confirm("Clear all scanned data and start over?")) {
+                location.reload();
+            }
+        }
+    </script>
 </body>
+</html>
