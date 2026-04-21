@@ -3,60 +3,78 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2nd Shift Production Scanner</title>
+    <title>2nd Shift Matrix Scanner</title>
     <link rel="manifest" href="manifest.json">
     <style>
-        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; }
+        body { font-family: -apple-system, sans-serif; background: #f0f2f5; margin: 0; padding: 0; }
         
-        #header { width: 100%; background: #333; color: white; padding: 15px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        
-        .status-bar { background: #444; color: #00ff00; width: 100%; padding: 5px 0; font-size: 0.8em; font-family: monospace; text-align: center; }
+        /* SECURITY OVERLAY */
+        #login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #1a1a1a; color: white; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 1000;
+        }
+        .hidden { display: none !important; }
 
-        #dashboard { width: 90%; max-width: 500px; margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        /* HEADER & STATUS */
+        #header { width: 100%; background: #333; color: white; padding: 15px 0; text-align: center; }
+        .status-bar { background: #444; color: #00ff00; width: 100%; padding: 8px 0; font-size: 0.85em; font-family: monospace; text-align: center; border-bottom: 2px solid #222; }
 
+        /* DASHBOARD GRID */
+        #dashboard { width: 90%; max-width: 500px; margin: 20px auto; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .stat-card { background: white; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .stat-card strong { display: block; color: #666; font-size: 0.8em; text-transform: uppercase; margin-bottom: 5px; }
+        .stat-card strong { display: block; color: #666; font-size: 0.75em; text-transform: uppercase; margin-bottom: 5px; letter-spacing: 1px; }
         .stat-val { font-size: 1.8em; font-weight: bold; }
 
-        /* Colors for the 4 data points */
+        /* THE 4 DATA SPOTS */
         #total-leaks { color: #d32f2f; }
         #total-flows { color: #1976d2; }
-        #total-passed { color: #388e3c; }
-        #total-hours { color: #f57c00; }
+        #total-passed { color: #388e3c; } /* 24hr Global */
+        #total-hours { color: #f57c00; }  /* 2nd Shift Only */
 
-        #controls { width: 90%; max-width: 500px; margin-top: 25px; }
-        .btn { display: block; width: 100%; padding: 18px; border: none; border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: opacity 0.2s; }
-        .btn-scan { background: #2196f3; color: white; }
+        /* CONTROLS */
+        #controls { width: 90%; max-width: 500px; margin: 10px auto; }
+        .btn { display: block; width: 100%; padding: 18px; border: none; border-radius: 8px; font-size: 1em; font-weight: bold; cursor: pointer; margin-bottom: 12px; }
+        .btn-scan { background: #2196f3; color: white; box-shadow: 0 4px #1565c0; }
+        .btn-scan:active { box-shadow: 0 2px #1565c0; transform: translateY(2px); }
         .btn-save { background: #388e3c; color: white; }
-        .btn-reset { background: #f44336; color: white; font-size: 0.8em; }
+        .btn-reset { background: #f44336; color: white; font-size: 0.8em; opacity: 0.8; }
 
-        #history { width: 90%; max-width: 500px; margin-top: 15px; color: #777; font-size: 0.85em; text-align: left; }
+        #log-entries { width: 90%; max-width: 500px; margin: 10px auto; color: #777; font-size: 0.8em; }
+        input[type="password"] { padding: 15px; border-radius: 8px; border: none; margin-bottom: 15px; width: 80%; max-width: 250px; text-align: center; font-size: 1.2em; }
     </style>
 </head>
 <body>
 
+    <div id="login-overlay">
+        <h2 style="color: #2196f3; margin-bottom: 5px;">Data Matrix Access</h2>
+        <p style="margin-bottom: 20px; opacity: 0.7;">Shift Supervisor Credentials Required</p>
+        <input type="password" id="pass-input" placeholder="Enter Password">
+        <button class="btn btn-scan" style="width: 250px;" onclick="Security.checkPassword()">UNLOCK APP</button>
+    </div>
+
     <div id="header">
-        <h2 style="margin:0">ShiftData Matrix</h2>
+        <h2 style="margin:0">Production Scanner</h2>
     </div>
     <div class="status-bar">
-        DOCUMENTS SCANNED: <span id="sheet-count">0</span> / 3
+        SHEETS ACCUMULATED: <span id="sheet-count">0</span> / 3
     </div>
 
     <div id="dashboard">
         <div class="stat-card">
-            <strong>Leaks</strong>
+            <strong>Leaks (Shift)</strong>
             <span id="total-leaks" class="stat-val">0</span>
         </div>
         <div class="stat-card">
-            <strong>Flow Fails</strong>
+            <strong>Flow (Shift)</strong>
             <span id="total-flows" class="stat-val">0</span>
         </div>
         <div class="stat-card">
-            <strong>Total Passed</strong>
+            <strong>24h Passed</strong>
             <span id="total-passed" class="stat-val">0</span>
         </div>
         <div class="stat-card">
-            <strong>Total Hours</strong>
+            <strong>Shift Hours</strong>
             <span id="total-hours" class="stat-val">0</span>
         </div>
     </div>
@@ -65,21 +83,23 @@
         <input type="file" id="capture" accept="image/*" capture="environment" style="display:none">
         
         <button class="btn btn-scan" onclick="document.getElementById('capture').click()">
-            📷 SCAN DOCUMENT
+            📷 SCAN SHEET
         </button>
 
         <button class="btn btn-save" onclick="finalizeSession()">
-            ✅ FINALIZE & SAVE REPORT
+            ✅ FINALIZE REPORT
         </button>
 
         <button class="btn btn-reset" onclick="resetSession()">
-            🔄 RESET ALL DATA
+            🔄 RESET SESSION
         </button>
     </div>
 
-    <div id="history">
-        <strong>Session Log:</strong>
-        <div id="log-entries">No documents scanned yet.</div>
+    <div id="log-entries" style="padding: 10px; border-top: 1px solid #ddd;">
+        <strong>Activity Log:</strong>
+        <ul id="history-list" style="padding-left: 20px; margin-top: 5px;">
+            <li>System Ready. Waiting for Scan 1...</li>
+        </ul>
     </div>
 
     <script src="data_model.js"></script>
@@ -90,52 +110,54 @@
     <script src="integrity_check.js"></script>
 
     <script>
-        // Register Service Worker for Offline Work
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js');
-        }
+        // --- 1. SECURITY LOGIC ---
+        const Security = {
+            SECRET_KEY: "Shift2026", // Change this to your desired password
+            checkPassword() {
+                const input = document.getElementById('pass-input').value;
+                if (input === this.SECRET_KEY) {
+                    document.getElementById('login-overlay').classList.add('hidden');
+                    sessionStorage.setItem('isAuth', 'true');
+                } else {
+                    alert("Access Denied");
+                }
+            },
+            init() {
+                if (sessionStorage.getItem('isAuth') === 'true') {
+                    document.getElementById('login-overlay').classList.add('hidden');
+                }
+            }
+        };
+        Security.init();
 
+        // --- 2. SCANNING PIPELINE ---
         const captureInput = document.getElementById('capture');
 
-        // Main Pipeline Trigger
         captureInput.addEventListener('change', async (event) => {
             const file = event.target.files[0];
-            if (!file) return;
-
-            // Integrity Check: Max 3 Sheets
-            if (ShiftReport.sheetsScanned >= 3) {
-                alert("Maximum of 3 sheets allowed per session.");
-                return;
-            }
+            if (!file || ShiftReport.sheetsScanned >= 3) return;
 
             try {
                 const imageUrl = URL.createObjectURL(file);
                 
-                // 1. Run Preprocessor
+                // Process Pipeline
                 const processedImg = await Preprocessor.process(imageUrl);
+                const rawData = await DataExtractor.analyze(processedImg);
+                const sheetResults = ShiftDataProcessor.processSheet(rawData);
                 
-                // 2. Extract Data (Handled by your data_extractor.js)
-                const rawResults = await DataExtractor.analyze(processedImg);
-                
-                // 3. Process Specific Shift Logic (Tallies & Hours)
-                const sheetData = ShiftDataProcessor.processSheet(rawResults);
-                
-                // 4. Integrity Check before adding
-                const isDataValid = IntegrityCheck.validate(sheetData);
-
-                if (isDataValid) {
-                    ShiftReport.addSheetData(sheetData);
-                    updateUI(sheetData);
+                // Integrity Check
+                if (IntegrityCheck.validate(sheetResults)) {
+                    ShiftReport.addSheetData(sheetResults);
+                    updateUI(sheetResults);
                 } else {
-                    alert("Data mismatch on sheet! Please check the tallies.");
+                    alert("Data Integrity Error: Hourly tallies don't match summary!");
                 }
-
-            } catch (error) {
-                console.error("Scan failed:", error);
-                alert("Error processing document. Try a clearer photo.");
+            } catch (err) {
+                alert("Scan failed. Ensure the page is flat and well-lit.");
             }
         });
 
+        // --- 3. UI UPDATES ---
         function updateUI(newSheet) {
             document.getElementById('sheet-count').innerText = ShiftReport.sheetsScanned;
             document.getElementById('total-leaks').innerText = ShiftReport.totals.leaks;
@@ -143,21 +165,27 @@
             document.getElementById('total-passed').innerText = ShiftReport.totals.passed;
             document.getElementById('total-hours').innerText = ShiftReport.totals.hoursWorked;
 
-            const log = document.getElementById('log-entries');
-            if(ShiftReport.sheetsScanned === 1) log.innerHTML = "";
-            log.innerHTML += `<div>Sheet ${ShiftReport.sheetsScanned}: +${newSheet.hoursThisSheet} hrs detected.</div>`;
+            const list = document.getElementById('history-list');
+            const item = document.createElement('li');
+            item.innerText = `Sheet ${ShiftReport.sheetsScanned}: Detected ${newSheet.hoursThisSheet} shift hours.`;
+            list.appendChild(item);
         }
 
         function finalizeSession() {
-            if(ShiftReport.sheetsScanned === 0) return alert("No data to save.");
-            alert("Report finalized for Second Shift!");
-            // Add logic here to download as CSV or Send to Email
+            if(ShiftReport.sheetsScanned === 0) return alert("Nothing to finalize.");
+            const report = ShiftReport.getFinalReport();
+            alert(`Report Finalized!\nShift Hours: ${report.data.hoursWorked}\n24h Total Passed: ${report.data.passed}`);
         }
 
         function resetSession() {
-            if(confirm("Clear all scanned data and start over?")) {
+            if(confirm("Are you sure? This will delete all 3 sheet totals.")) {
                 location.reload();
             }
+        }
+
+        // Service Worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
         }
     </script>
 </body>
