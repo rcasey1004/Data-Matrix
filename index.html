@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shift Scanner</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { font-family: sans-serif; background: #f4f4f4; text-align: center; }
+        #camera-container { position: relative; width: 90%; max-width: 500px; margin: auto; }
+        /* The Guide Box helps align your 7 columns */
+        .guide-box { 
+            position: absolute; border: 2px dashed #00ff00; 
+            top: 10%; left: 5%; right: 5%; bottom: 10%; pointer-events: none;
+        }
+        .btn { background: #2196F3; color: white; padding: 15px; border: none; border-radius: 5px; width: 80%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1>2nd Shift Scanner</h1>
+    
+    <div id="camera-container">
+        <input type="file" id="capture" accept="image/*" capture="environment" style="display:none">
+        <button class="btn" onclick="document.getElementById('capture').click()">📷 TAKE PHOTO OF SHEET</button>
+        <div class="guide-box"></div>
+    </div>
+
+    <div id="output-display" style="margin-top: 20px;">
+        </div>
+
+    <script src="data_model.js"></script>
+    <script src="preprocessor.js"></script>
+    <script src="talley_counter.js"></script>
+    <script src="data_extractor.js"></script>
+    <script src="shift_data_processor.js"></script>
+    <script src="integrity_check.js"></script>
+
+    <script>
+        // Register the Service Worker for offline use
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+
+        const input = document.getElementById('capture');
+        input.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Start the pipeline
+            const rawImg = URL.createObjectURL(file);
+            console.log("Starting Preprocessor...");
+            const cleanImg = await Preprocessor.process(rawImg);
+            
+            // Once you get the photo tonight, we will 
+            // fill in the logic to trigger the other 5 files here!
+        });
+    </script>
+</body>
+</html>

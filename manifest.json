@@ -1,0 +1,16 @@
+{
+  "short_name": "ShiftScan",
+  "name": "Production Shift Scanner",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    }
+  ],
+  "start_url": "/index.html",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#2196F3"
+}
