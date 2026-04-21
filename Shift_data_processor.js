@@ -1,30 +1,34 @@
 /**
  * SHIFT DATA PROCESSOR
- * Specifically handles the 2nd shift hourly breakdown.
+ * Logic to determine if an hour was actually worked.
  */
-const ShiftProcessor = {
-    // Indices for 2nd shift (assuming 11pm is index 0)
-    // 3pm-4pm is index 16, through 10pm-11pm at index 23
-    secondShiftRange: { start: 16, end: 23 },
+const ShiftDataProcessor = {
+    calculateActiveHours(rows) {
+        let activeCount = 0;
 
-    calculateDetailedFails(allRows) {
-        let totalLeak = 0;
-        let totalFlow = 0;
-        let hoursWorked = 0;
+        rows.forEach(row => {
+            // Check if any of the columns have data > 0
+            const hasData = row.leaks > 0 || 
+                            row.flowFails > 0 || 
+                            row.retests > 0 || 
+                            row.passed > 0;
 
-        for (let i = this.secondShiftRange.start; i <= this.secondShiftRange.end; i++) {
-            const rowData = allRows[i];
-            
-            if (rowData) {
-                // If any data exists in this row, count it as an hour worked
-                if (rowData.hasEntries) hoursWorked++;
-                
-                // Add the specific segment fails
-                totalLeak += parseInt(rowData.leakCol) || 0;
-                totalFlow += parseInt(rowData.flowCol) || 0;
+            if (hasData) {
+                activeCount++;
             }
-        }
+        });
 
-        return { totalLeak, totalFlow, hoursWorked };
+        return activeCount;
+    },
+
+    processSheet(ocrData) {
+        // This is called for each individual sheet
+        return {
+            leaks: ocrData.totalLeaks,
+            flowFails: ocrData.totalFlows,
+            retests: ocrData.totalRetests,
+            passed: ocrData.totalPassed,
+            hoursThisSheet: this.calculateActiveHours(ocrData.rows)
+        };
     }
 };

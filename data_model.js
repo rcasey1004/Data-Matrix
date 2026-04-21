@@ -1,18 +1,37 @@
 /**
- * THE DATA MODEL
- * This object will hold the final results for your shift report.
+ * DATA MODEL
+ * Now supports multi-sheet accumulation.
  */
-const dailyReport = {
-    shift: "Second",
-    hoursWorked: 0,
-    metrics: {
-        leaks: 0,      // Summed from Zone 3
-        flowFails: 0,  // Summed from Zone 4
-        retests: 0,    // From Summary Box
-        passed: 0      // From Summary Box
+const ShiftReport = {
+    sheetsScanned: 0,
+    maxSheets: 3,
+    
+    // Running totals
+    totals: {
+        leaks: 0,
+        flowFails: 0,
+        retests: 0,
+        passed: 0,
+        hoursWorked: 0
     },
-    grandTotals: {
-        dailyLeaks: 0, // From Page Footer
-        dailyFlows: 0  // From Page Footer
+
+    // Method to add data from a new scan
+    addSheetData(newData) {
+        if (this.sheetsScanned < this.maxSheets) {
+            this.totals.leaks += newData.leaks;
+            this.totals.flowFails += newData.flowFails;
+            this.totals.retests += newData.retests;
+            this.totals.passed += newData.passed;
+            this.totals.hoursWorked += newData.hoursWorked;
+            
+            this.sheetsScanned++;
+            return true;
+        }
+        return false; // Limit reached
+    },
+
+    reset() {
+        this.sheetsScanned = 0;
+        this.totals = { leaks: 0, flowFails: 0, retests: 0, passed: 0, hoursWorked: 0 };
     }
 };
