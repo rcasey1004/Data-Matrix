@@ -1,34 +1,42 @@
 /**
- * SHIFT DATA PROCESSOR
- * Logic to determine if an hour was actually worked.
+ * SHIFT_DATA_PROCESSOR.JS
+ * Purpose: Separates shift-specific metrics from 24-hour grand totals.
  */
+
 const ShiftDataProcessor = {
-    calculateActiveHours(rows) {
-        let activeCount = 0;
+    // 2nd Shift is Row 16 (3pm) to Row 23 (10pm)
+    shiftRange: { start: 16, end: 23 },
 
-        rows.forEach(row => {
-            // Check if any of the columns have data > 0
-            const hasData = row.leaks > 0 || 
-                            row.flowFails > 0 || 
-                            row.retests > 0 || 
-                            row.passed > 0;
+    processSheet(ocrResults) {
+        let shiftLeaks = 0;
+        let shiftFlows = 0;
+        let shiftHours = 0;
 
-            if (hasData) {
-                activeCount++;
+        // 1. Loop through all 24 rows, but only collect data for 2nd Shift
+        ocrResults.rows.forEach((row, index) => {
+            const isSecondShift = index >= this.shiftRange.start && index <= this.shiftRange.end;
+
+            if (isSecondShift) {
+                // Sum tallies for 2nd shift only
+                shiftLeaks += row.leakTallies || 0;
+                shiftFlows += row.flowTallies || 0;
+
+                // If there is any production ink in this row, count the hour
+                if (row.hasAnyData) {
+                    shiftHours++;
+                }
             }
         });
 
-        return activeCount;
-    },
+        // 2. Grab the 24-hour total for parts passed (Global)
+        // This looks at the specific "Grand Total" coordinate identified by DataExtractor
+        const totalPartsPassed24h = ocrResults.grandTotals.passed;
 
-    processSheet(ocrData) {
-        // This is called for each individual sheet
         return {
-            leaks: ocrData.totalLeaks,
-            flowFails: ocrData.totalFlows,
-            retests: ocrData.totalRetests,
-            passed: ocrData.totalPassed,
-            hoursThisSheet: this.calculateActiveHours(ocrData.rows)
+            leaks: shiftLeaks,
+            flowFails: shiftFlows,
+            hoursThisSheet: shiftHours,
+            passed: totalPartsPassed24h // This is the 24hr number
         };
     }
 };
